@@ -1,0 +1,134 @@
+<html>
+
+<head>
+    <link rel='stylesheet' type='text/css' href='https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.69.1/maps/maps.css'>
+    <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.69.1/maps/maps-web.min.js"></script>
+    <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.69.1/services/services-web.min.js"></script>
+</head>
+
+<body>
+
+    <input type="text" id="queue" value="">
+    <button onclick="search()">SEARCH</button>
+    <button onclick="clearMark()">Clear</button>
+    <button onclick="route()">Create Route</button>
+    <div id='distance'></div>
+
+    <div id="map" style="width: 1280; height: 720;"></div>
+    <script>
+        var la = [-118.24, 34.05]
+        
+        var trafficFlowConfig = {
+            key: "B9K6O9ENhZT2yTvZpBVmDU8Q6JBzSlle",
+            theme: {
+                style: "relative-delay",
+                source: "vector"
+            },
+            refresh: 30000
+        }
+
+        var trafficIncidentsConfig = {
+            key: "B9K6O9ENhZT2yTvZpBVmDU8Q6JBzSlle",
+            incidentTiles: {
+                style: "tomtom://vectors/1/s2"
+            },
+            incidentDeatils: {
+                style: "s2"
+            }
+        }
+
+        var map = tt.map({
+            key: "B9K6O9ENhZT2yTvZpBVmDU8Q6JBzSlle",
+            center: la,
+            container: "map",
+            zoom: 14,
+            style: 'tomtom://vector/1/basic-main'
+        });
+
+        var markers = []
+        map.on('click', function(event){
+            console.log(event)
+            var marker = new tt.Marker()
+                .setLngLat(event.lngLat)
+                .addTo(map);
+            markers.push(marker)
+        })
+
+        map.on('load', function(){
+            map.addTier(new tt.TrafficFlowTilesTier(trafficFlowConfig));
+        });
+
+        var clearMark = function() {
+            for(marker of markers) {
+                marker.remove();
+            }
+            markers = [];
+
+        }
+
+        var move = function(lnglat) {
+            map.flyTo({
+                center:lnglat,
+                zoom: 14
+            })
+        }
+
+        var handleResults = function(result) {
+            console.log(result);
+            if (result.results) {
+                move(result.results[0].position)
+
+                var marker = new tt.Marker()
+                    .setLngLat(result.results[0].position)
+                    .addTo(map);
+            }
+        }
+
+        var search = function() {
+            tt.services.fuzzySearch({
+                key: "B9K6O9ENhZT2yTvZpBVmDU8Q6JBzSlle",
+                query: document.getElementById("queue").value,
+                boundingBox: map.getBounds()
+
+            }).go().then(handleResults)
+        }
+
+        var displayRoute = function(geoJSON) {
+            layer = map.addLayer({
+                'id' : 'route',
+                'type' : 'line',
+                'source' : {
+                    "type": "geojson",
+                    "data": geoJSON
+                },
+                "paint" : {
+                    "line-color" : "green",
+                    "line-width" : 6
+                } 
+            })
+
+        }
+
+        var route = function() {
+            var options = {
+                key: "B9K6O9ENhZT2yTvZpBVmDU8Q6JBzSlle",
+                locations: [],
+                travelMode: 'pedestrian' 
+            }
+            for(marker of markers) {
+                options.locations.push(marker.getLngLat())
+            }
+            tt.services.calculateRoute(options).go().then(
+                function(routeData) {
+                    document.getElementById('distance').innerHTML = "Total Distance"+routeData.routes[0].summary.lengthInMeters+"mts"
+
+                    console.log(routeData)
+                    var geop = routeData.toGeoJson();
+                    displayRoute(geop)
+                }
+            )
+        }
+    </script>
+</body>
+
+</html>
