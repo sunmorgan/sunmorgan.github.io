@@ -7,3 +7,6 @@
 #
 layout: home
 ---
+
+About:
+Current freshman student studying computer science at the University of Ottawa. Passionate about algorithms
